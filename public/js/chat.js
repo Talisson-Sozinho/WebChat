@@ -4,6 +4,10 @@ const { username, room } = Qs.parse(location.search, {
   ignoreQueryPrefix: true,
 });
 
+if (!username || !room) {
+  location.replace('/')
+}
+
 socket.emit('joinRoom', { username, room });
 
 const createMessage = (message) => {
