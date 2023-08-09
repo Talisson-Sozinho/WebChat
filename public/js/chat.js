@@ -1,73 +1,22 @@
-const socket = window.io();
+import { userStopTyping, userTyping } from './sockets/socketsListernerFunctions.js';
+import socket from './sockets/userSocket.js';
+import { createMessage } from './utils/elementsHTML.js';
+import { chatFormSubmit, typingRemove, typingVerification } from './utils/listenerFunctions.js';
 
-const { username, room } = Qs.parse(location.search, {
-  ignoreQueryPrefix: true,
-});
+const form = window.document.querySelector('form');
+const inputMessage = window.document.querySelector('#messageInput');
 
-if (!username || !room) {
-  location.replace('/')
-}
+form.addEventListener('submit', chatFormSubmit);
 
-socket.emit('joinRoom', { username, room });
+inputMessage.addEventListener('focus', typingVerification);
 
-const createMessage = (message) => {
-  const messagesUl = document.querySelector('#messages');
-  const li = document.createElement('li');
-  li.innerText = message;
-  messagesUl.appendChild(li);
-};
+inputMessage.addEventListener('blur', typingRemove);
 
-const form = document.querySelector('form');
-const inputMessage = document.querySelector('#messageInput');
+socket.on('serverMessage', createMessage);
 
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
+socket.on('serverMessageTyping', userTyping);
 
-  socket.emit('stopTyping');
-
-  if (inputMessage.value) {
-    const { value: message } = inputMessage;
-    socket.emit('roomClientMessage', { room, message });
-    inputMessage.value = '';
-  }
-});
-
-let timeOutId;
-
-inputMessage.addEventListener('focus', () => {
-  inputMessage.addEventListener('keypress', () => {
-    socket.emit('typing');
-  
-    clearTimeout(timeOutId);
-    timeOutId = setTimeout(() => socket.emit('stopTyping'), 500);
-  });
-});
-
-inputMessage.addEventListener('blur', () => {
-  inputMessage.removeEventListener('keypress', () => {
-    socket.emit('typing');
-
-    clearTimeout(timeOutId);
-    timeOutId = setTimeout(() => socket.emit('stopTyping'), 500);
-  });
-  socket.emit('stopTyping');
-});
-
-socket.on('serverMessage', (message) => createMessage(message));
-
-socket.on('serverMessageTyping', (message) => {
-  const messagesUl = document.querySelector('#messages');
-  if (messagesUl.lastChild.innerText !== message) {
-    createMessage(message);
-  }
-});
-
-socket.on('serverMessageStopTyping', (message) => {
-  const messagesUl = document.querySelector('#messages');
-  if (messagesUl.lastChild.innerText === message) { 
-    messagesUl.removeChild(messagesUl.lastChild); 
-  }
-});
+socket.on('serverMessageStopTyping', userStopTyping);
 
 window.onbeforeunload = () => {
   socket.disconnect();
